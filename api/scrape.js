@@ -53,15 +53,26 @@ function transformData(raw) {
   };
 }
 
+// Cache the executable path across warm Lambda invocations to skip re-downloading.
+let _executablePath = null;
+async function getExecutablePath() {
+  if (!_executablePath) {
+    _executablePath = await chromium.executablePath(CHROMIUM_REMOTE_URL);
+  }
+  return _executablePath;
+}
+
+// Resource types that add no value to finding the /api/b/ URL.
+const BLOCKED_TYPES = new Set(['image', 'media', 'font', 'stylesheet', 'other', 'ping', 'manifest']);
+
 async function getApiBUrlFromNetwork(pageUrl) {
   let browser = null;
-  let apiUrl = null;
 
   try {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
+      executablePath: await getExecutablePath(),
       headless: chromium.headless,
     });
 
@@ -69,30 +80,44 @@ async function getApiBUrlFromNetwork(pageUrl) {
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
-    await page.setExtraHTTPHeaders({
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+
+    // Intercept every request so we can block junk and bail early.
+    await page.setRequestInterception(true);
+
+    const apiUrl = await new Promise((resolve, reject) => {
+      // Hard ceiling — don't let a slow page hang the function forever.
+      const timer = setTimeout(() => resolve(null), 25000);
+
+      page.on('request', (req) => {
+        const url = req.url();
+
+        // Found it — capture and abort the request (we'll fetch it ourselves).
+        if (/\/api\/b\//i.test(url)) {
+          clearTimeout(timer);
+          req.abort();
+          resolve(url);
+          return;
+        }
+
+        // Drop everything that can't contain the API call.
+        if (BLOCKED_TYPES.has(req.resourceType())) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
+
+      // Use domcontentloaded — we don't need the page to fully settle.
+      page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 25000 })
+        .catch(() => {}); // navigation "errors" are expected when we abort requests
     });
 
-    page.on('request', (request) => {
-      const url = request.url();
-      if (/\/api\/b\//i.test(url)) apiUrl = url;
-    });
-
-    await page.goto(pageUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-
-    if (!apiUrl) {
-      const requests = await page.evaluate(() =>
-        performance.getEntriesByType('resource').map((entry) => entry.name)
-      );
-      apiUrl = requests.find((url) => /\/api\/b\//i.test(url)) || null;
-    }
+    return apiUrl;
   } catch (error) {
     throw new Error(`Puppeteer navigation failed: ${error.message}`);
   } finally {
     if (browser) await browser.close();
   }
-
-  return apiUrl;
 }
 
 module.exports = async function handler(req, res) {
