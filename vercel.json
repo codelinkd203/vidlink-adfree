@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "PUPPETEER_SKIP_DOWNLOAD": "true"
+    }
+  },
   "functions": {
     "api/scrape.js": {
       "maxDuration": 60
