@@ -1,5 +1,9 @@
-const chromium = require('@sparticuz/chromium');
+const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
+
+// Chromium binary is downloaded at runtime — keeps the npm package tiny for Vercel builds.
+const CHROMIUM_REMOTE_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v147.0.2/chromium-v147.0.2-pack.x64.tar';
 
 const BASE_URL = process.env.BASE_URL || 'https://vidlink.pro';
 if (!BASE_URL) throw new Error('BASE_URL environment variable is required');
@@ -57,7 +61,7 @@ async function getApiBUrlFromNetwork(pageUrl) {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
       headless: chromium.headless,
     });
 
