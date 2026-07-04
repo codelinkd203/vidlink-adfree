@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>VidLink</title>
+  <meta name="description" content="Biggest and Fastest Streaming API — Ad-Free"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090b;
+      --bg2: #18181b;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.18);
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --indigo: #6366f1;
+      --indigo-dim: rgba(99,102,241,0.12);
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --pink: #ec4899;
+      --purple: #a855f7;
+      --radius: 12px;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      padding: 0 1.5rem;
+    }
+    .nav-inner {
+      max-width: 70rem;
+      margin: 0 auto;
+      padding: 1rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #fff 0%, #71717a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-btn {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      font-family: var(--font);
+    }
+    .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 8rem 1.5rem 4rem;
+    }
+    .hero-grid {
+      max-width: 70rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    @media (min-width: 1024px) {
+      .hero-grid { flex-direction: row; align-items: center; }
+    }
+    .hero-left { flex: 1; }
+    .hero-title {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, #71717a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+    }
+    .hero-sub {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 600;
+      background: linear-gradient(135deg, #fff 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+      max-width: 32rem;
+      margin-bottom: 2rem;
+    }
+    .hero-ctas { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .btn-primary {
+      padding: 0.6rem 1.5rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: var(--font);
+    }
+    .btn-primary:hover { background: rgba(255,255,255,0.12); border-color: var(--border-hover); }
+    .btn-link {
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.7);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: var(--font);
+      transition: color 0.15s;
+    }
+    .btn-link:hover { color: var(--text); }
+
+    /* Ad-free badge */
+    .adfree-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 9999px;
+      color: #86efac;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .adfree-badge svg { width: 12px; height: 12px; }
+
+    .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .stat-card {
+      padding: 0.875rem 1.25rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      transition: border-color 0.15s, transform 0.15s;
+      cursor: default;
+    }
+    .stat-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .stat-num { font-size: 1.4rem; font-weight: 700; color: #d4d4d8; }
+    .stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── MARQUEE ── */
+    .hero-right {
+      position: relative;
+      flex: 1;
+      height: 500px;
+      overflow: hidden;
+      border-radius: var(--radius);
+    }
+    .marquee-wrap {
+      display: flex;
+      gap: 1rem;
+      height: 100%;
+    }
+    .marquee-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      animation: marqueeUp 20s linear infinite;
+    }
+    .marquee-col.rev { animation-direction: reverse; }
+    .marquee-col:hover { animation-play-state: paused; }
+    @keyframes marqueeUp {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+    .poster-card {
+      width: 144px;
+      height: 208px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+    }
+    .poster-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-fade-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 30%;
+      background: linear-gradient(to bottom, var(--bg), transparent);
+      pointer-events: none;
+    }
+    .hero-fade-bot {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 30%;
+      background: linear-gradient(to top, var(--bg), transparent);
+      pointer-events: none;
+    }
+
+    /* ── DOT PATTERN ── */
+    .dot-bg {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 20px 20px;
+      mask-image: radial-gradient(ellipse 60% 70% at 70% 50%, white, transparent);
+      pointer-events: none;
+    }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      max-width: 70rem;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── PLAYER TESTER ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-head h2 { font-size: 1.5rem; font-weight: 600; }
+    .divider { flex: 1; height: 1px; background: linear-gradient(to right, rgba(255,255,255,0.15), transparent); }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.25rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 9999px;
+      margin-bottom: 1rem;
+      width: fit-content;
+    }
+    .tab {
+      padding: 0.4rem 1rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      font-family: var(--font);
+    }
+    .tab.active { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .url-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 1rem;
+      font-family: var(--mono);
+    }
+    .url-bar button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .url-bar button:hover { color: var(--text); }
+
+    /* live player inputs */
+    .player-controls {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .player-controls input {
+      flex: 1;
+      min-width: 80px;
+      padding: 0.45rem 0.75rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: var(--mono);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .player-controls input:focus { border-color: rgba(255,255,255,0.25); }
+    .player-controls input::placeholder { color: var(--muted); }
+    .player-controls button {
+      padding: 0.45rem 1rem;
+      background: var(--indigo);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+    .player-controls button:hover { opacity: 0.85; }
+
+    .player-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      margin-bottom: 0.75rem;
+    }
+    .player-wrap iframe {
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: block;
+      border: none;
+    }
+
+    /* ── FEATURE CARDS ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 2.5rem 0;
+    }
+    .feature-card {
+      padding: 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s, transform 0.15s, background 0.15s;
+    }
+    .feature-card:hover { border-color: var(--border-hover); transform: translateY(-2px); background: rgba(255,255,255,0.06); }
+    .feat-icon {
+      width: 2rem; height: 2rem;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+    .feat-icon svg { width: 1.1rem; height: 1.1rem; }
+    .feature-card h3 { font-size: 1rem; font-weight: 500; margin-bottom: 0.4rem; }
+    .feature-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── API DOCS ── */
+    .doc-card {
+      padding: 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.75rem;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .doc-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .doc-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .badge-new {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      background: var(--green);
+      color: #000;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .doc-note { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .code-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: rgba(255,255,255,0.06);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: #d4d4d8;
+      margin-bottom: 0.5rem;
+    }
+    .code-pill button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.2rem;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .code-pill button:hover { color: var(--text); }
+    .code-block {
+      padding: 0.75rem;
+      background: rgba(99,102,241,0.08);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: #a5b4fc;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      margin-top: 0.5rem;
+    }
+    .code-block-label { font-size: 0.7rem; color: var(--muted); margin-top: 0.75rem; margin-bottom: 0.25rem; }
+
+    /* ── PARAMS GRID ── */
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.75rem;
+    }
+    .param-card {
+      padding: 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .param-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .param-card strong { font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
+    .param-card p { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0.6rem; line-height: 1.5; }
+
+    /* ── WATCH PROGRESS ── */
+    .progress-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (max-width: 768px) { .progress-grid { grid-template-columns: 1fr; } }
+    .prog-card {
+      padding: 1.5rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .prog-card-head {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .icon-wrap {
+      padding: 0.5rem;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon-wrap svg { width: 1.1rem; height: 1.1rem; }
+    .prog-card h3 { font-size: 0.95rem; font-weight: 500; }
+    .prog-card p, .prog-card li { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .prog-card ul { margin-left: 1.25rem; margin-bottom: 1rem; }
+    .code-block-dark {
+      position: relative;
+      padding: 1rem;
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.85);
+      white-space: pre-wrap;
+      line-height: 1.7;
+      margin-top: 0.5rem;
+      overflow-x: auto;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem 4rem;
+      border-top: 1px solid var(--border);
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+    }
+
+    /* helpers */
+    .mt-2 { margin-top: 0.5rem; }
+    .mt-4 { margin-top: 1rem; }
+    .mt-8 { margin-top: 2rem; }
+    a { color: #4ade80; text-decoration: none; }
+    a:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <span class="logo">VidLink</span>
+    <div class="nav-links">
+      <button class="nav-btn" onclick="document.getElementById('simpleDoc').scrollIntoView({behavior:'smooth'})">Documentation</button>
+      <button class="nav-btn" onclick="document.getElementById('player-section').scrollIntoView({behavior:'smooth'})">
+        Test Player ▶
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="dot-bg"></div>
+  <div class="hero-grid">
+    <div class="hero-left">
+      <h1 class="hero-title">VidLink</h1>
+      <p class="hero-sub">Biggest and Fastest Streaming API</p>
+
+      <div class="adfree-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        100% Ad-Free
+      </div>
+
+      <div class="hero-ctas">
+        <button class="btn-primary" onclick="document.getElementById('simpleDoc').scrollIntoView({behavior:'smooth'})">Get Started &rsaquo;</button>
+        <span style="font-size:0.75rem;color:var(--muted)">or</span>
+        <button class="btn-link" onclick="document.getElementById('player-section').scrollIntoView({behavior:'smooth'})">Test the Player</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-num">500K+</div>
+          <div class="stat-label">Movies</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">100K+</div>
+          <div class="stat-label">Shows</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">50K+</div>
+          <div class="stat-label">TV Shows</div>
+        </div>
+      </div>
+      <p style="font-size:0.7rem;color:rgba(255,255,255,0.25);margin-top:0.5rem;">Estimated from 13+ sources</p>
+    </div>
+
+    <div class="hero-right">
+      <div class="marquee-wrap" id="marquee-wrap"></div>
+      <div class="hero-fade-top"></div>
+      <div class="hero-fade-bot"></div>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN -->
+<main>
+
+  <!-- PLAYER TESTER -->
+  <div id="player-section">
+    <div style="text-align:center;margin-bottom:1rem;">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('movie',this)">Movie Player</button>
+        <button class="tab" onclick="switchTab('tv',this)">Series Player</button>
+      </div>
+    </div>
+
+    <!-- Movie inputs -->
+    <div id="tab-movie" class="player-controls">
+      <input id="movie-id" type="text" placeholder="TMDB Movie ID (e.g. 672)" value="672"/>
+      <button onclick="loadMovie()">Load</button>
+    </div>
+
+    <!-- TV inputs -->
+    <div id="tab-tv" class="player-controls" style="display:none">
+      <input id="tv-id" type="text" placeholder="TMDB Show ID (e.g. 58981)" value="58981"/>
+      <input id="tv-s" type="text" placeholder="Season" value="1" style="max-width:80px"/>
+      <input id="tv-e" type="text" placeholder="Episode" value="1" style="max-width:80px"/>
+      <button onclick="loadTV()">Load</button>
+    </div>
+
+
+    <div class="url-bar">
+      <span id="current-url">/movie/672</span>
+      <button onclick="copyURL()" title="Copy URL">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="8" y="8" width="14" height="14" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="player-wrap">
+      <iframe id="player-iframe" src="/movie/672" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feat-icon" style="background:var(--indigo-dim)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+        </svg>
+      </div>
+      <h3>Easy to Use</h3>
+      <p>Just copy the link and embed it into your website.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="background:rgba(59,130,246,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>
+        </svg>
+      </div>
+      <h3>Huge Library</h3>
+      <p>Movies and shows scraped from 13+ sources.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="background:rgba(236,72,153,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>
+        </svg>
+      </div>
+      <h3>Customizable</h3>
+      <p>Customize the player via URL query parameters.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="background:rgba(168,85,247,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 0 1 7.38 16.75"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/><path d="M2.5 8.875a10 10 0 0 0-.5 3"/><path d="M2.83 16a10 10 0 0 0 2.43 3.4"/><path d="M4.636 5.235a10 10 0 0 1 .891-.857"/><path d="M8.644 21.42a10 10 0 0 0 7.631-.38"/>
+        </svg>
+      </div>
+      <h3>Auto Update</h3>
+      <p>Content added every day, updated automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="background:rgba(34,197,94,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
+        </svg>
+      </div>
+      <h3>Highest Quality</h3>
+      <p>Latest available quality, fastest delivery.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="background:rgba(34,197,94,0.12)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <h3>100% Ad-Free</h3>
+      <p>Zero ads, zero trackers. Pure streaming.</p>
+    </div>
+  </div>
+
+  <!-- API DOCS -->
+  <div id="simpleDoc">
+    <div class="section-head mt-8">
+      <h2>API Documentation</h2>
+      <div class="divider"></div>
+    </div>
+
+    <div class="doc-card">
+      <h3>Embed Movies</h3>
+      <p class="doc-note">TmdbId is required from <a href="https://developer.themoviedb.org/docs/getting-started" target="_blank" rel="noopener noreferrer">The Movie Database</a> API.</p>
+      <div class="code-pill">
+        <span>/movie/{tmdbId}</span>
+        <button onclick="copyText('/movie/{tmdbId}',this)" title="Copy">&#10697;</button>
+      </div>
+      <p class="code-block-label">Code Example:</p>
+      <div class="code-block">&lt;iframe
+  src="/movie/672"
+  frameborder="0"
+  allowfullscreen
+&gt;&lt;/iframe&gt;</div>
+    </div>
+
+    <div class="doc-card">
+      <h3>Embed Shows</h3>
+      <p class="doc-note">TmdbId from <a href="https://developer.themoviedb.org/docs/getting-started" target="_blank" rel="noopener noreferrer">The Movie Database</a> API. Season and episode required.</p>
+      <div class="code-pill">
+        <span>/tv/{tmdbId}/{season}/{episode}</span>
+        <button onclick="copyText('/tv/{tmdbId}/{season}/{episode}',this)" title="Copy">&#10697;</button>
+      </div>
+      <p class="code-block-label">Code Example:</p>
+      <div class="code-block">&lt;iframe
+  src="/tv/58981/1/1"
+  frameborder="0"
+  allowfullscreen
+&gt;&lt;/iframe&gt;</div>
+    </div>
+
+    <div class="doc-card">
+    <div class="section-head mt-8">
+      <h2>Customization Parameters</h2>
+      <div class="divider"></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;">Append parameters to the URL. First parameter starts with <code style="font-family:var(--mono)">?</code>, additional ones separated by <code style="font-family:var(--mono)">&amp;</code>. Use hex color codes without the <code style="font-family:var(--mono)">#</code>.</p>
+
+    <div class="params-grid">
+      <div class="param-card">
+        <strong>primaryColor</strong>
+        <p>Sets the primary color of the player, including sliders and autoplay controls.</p>
+        <div class="code-pill"><span>primaryColor=B20710</span><button onclick="copyText('primaryColor=B20710',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>secondaryColor</strong>
+        <p>Defines the color of the progress bar behind the sliders.</p>
+        <div class="code-pill"><span>secondaryColor=170000</span><button onclick="copyText('secondaryColor=170000',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>icons</strong>
+        <p>Changes the icon design. Can be <code style="font-family:var(--mono);font-size:0.7rem">vid</code> or <code style="font-family:var(--mono);font-size:0.7rem">default</code>.</p>
+        <div class="code-pill"><span>icons=vid</span><button onclick="copyText('icons=vid',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>iconColor</strong>
+        <p>Changes the color of the icons within the player.</p>
+        <div class="code-pill"><span>iconColor=B20710</span><button onclick="copyText('iconColor=B20710',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>title</strong>
+        <p>Controls whether the media title is displayed.</p>
+        <div class="code-pill"><span>title=false</span><button onclick="copyText('title=false',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>poster</strong>
+        <p>Determines if the poster image is shown.</p>
+        <div class="code-pill"><span>poster=true</span><button onclick="copyText('poster=true',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>autoplay</strong>
+        <p>Controls whether media starts playing automatically.</p>
+        <div class="code-pill"><span>autoplay=false</span><button onclick="copyText('autoplay=false',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>nextbutton</strong>
+        <p>Shows the next episode button at 90% watch progress. Off by default.</p>
+        <div class="code-pill"><span>nextbutton=true</span><button onclick="copyText('nextbutton=true',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>player <span class="badge-new">New</span></strong>
+        <p>Changes player to JWPlayer or the default player.</p>
+        <div class="code-pill"><span>player=jw</span><button onclick="copyText('player=jw',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>startAt <span class="badge-new">New</span></strong>
+        <p>Starts video at specified time in seconds.</p>
+        <div class="code-pill"><span>startAt=60</span><button onclick="copyText('startAt=60',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>sub_file <span class="badge-new">New</span></strong>
+        <p>Adds external subtitles. Must be a direct link to a VTT file.</p>
+        <div class="code-pill"><span>sub_file=https://…/subs.vtt</span><button onclick="copyText('sub_file=https://example.com/subtitles.vtt',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>sub_label <span class="badge-new">New</span></strong>
+        <p>Label for the external subtitle track. Defaults to 'External Subtitle'.</p>
+        <div class="code-pill"><span>sub_label=English</span><button onclick="copyText('sub_label=English',this)">&#10697;</button></div>
+      </div>
+      <div class="param-card">
+        <strong>fallback_url <span class="badge-new">New</span></strong>
+        <p>Redirect URL when the stream fails to load.</p>
+        <div class="code-pill"><span>fallback_url=https://…/fallback</span><button onclick="copyText('fallback_url=https://example.com/fallback',this)">&#10697;</button></div>
+      </div>
+    </div>
+
+    <!-- WATCH PROGRESS -->
+    <div class="section-head mt-8">
+      <h2>Watch Progress</h2>
+      <div class="divider"></div>
+    </div>
+
+    <div style="padding:1.5rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+        <div class="icon-wrap" style="background:rgba(59,130,246,0.1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        </div>
+        <h3 style="font-size:1.1rem;font-weight:500;">Continue Watching Feature</h3>
+      </div>
+      <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Track your users' watch progress across movies and TV shows. This enables a "Continue Watching" feature on your website.</p>
+    </div>
+
+    <div class="progress-grid">
+      <div class="prog-card">
+        <div class="prog-card-head">
+          <div class="icon-wrap" style="background:rgba(168,85,247,0.1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          </div>
+          <h3>Add Event Listener</h3>
+        </div>
+        <p style="margin-bottom:0.75rem;">Add this script wherever your iframe lives. In React, use a <code style="font-family:var(--mono);font-size:0.72rem">useEffect</code>.</p>
+        <div class="code-block-dark">window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type === 'MEDIA_DATA') {
+    const mediaData = event.data.data;
+    localStorage.setItem('vidLinkProgress',
+      JSON.stringify(mediaData));
+  }
+});</div>
+      </div>
+
+      <div class="prog-card">
+        <div class="prog-card-head">
+          <div class="icon-wrap" style="background:rgba(34,197,94,0.1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </div>
+          <h3>Stored Data Structure</h3>
+        </div>
+        <p style="margin-bottom:0.5rem;">Data in localStorage contains:</p>
+        <ul style="margin-bottom:0.75rem;">
+          <li>Movie/Show details (title, poster, etc.)</li>
+          <li>Watch progress (watched, duration)</li>
+          <li>Last watched episode for TV shows</li>
+          <li>Episode-specific progress</li>
+        </ul>
+        <div class="code-block-dark">{
+  "672": {
+    "id": 672,
+    "type": "movie",
+    "title": "Furiosa: A Mad Max Saga",
+    "progress": {
+      "watched": 8726.9,
+      "duration": 8891.763
+    }
+  }
+}</div>
+      </div>
+    </div>
+
+    <!-- PLAYER EVENTS -->
+    <div class="section-head mt-8">
+      <h2>Player Events</h2>
+      <span class="badge-new">New</span>
+      <div class="divider"></div>
+    </div>
+
+    <div class="progress-grid">
+      <div class="prog-card">
+        <div class="prog-card-head">
+          <div class="icon-wrap" style="background:rgba(245,158,11,0.1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+          </div>
+          <h3>Available Events</h3>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div style="padding:0.6rem;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;align-items:center;gap:0.5rem;"><code style="font-family:var(--mono);font-size:0.7rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;">play</code><span style="font-size:0.78rem;color:var(--muted);">Video starts playing</span></div>
+          <div style="padding:0.6rem;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;align-items:center;gap:0.5rem;"><code style="font-family:var(--mono);font-size:0.7rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;">pause</code><span style="font-size:0.78rem;color:var(--muted);">Video is paused</span></div>
+          <div style="padding:0.6rem;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;align-items:center;gap:0.5rem;"><code style="font-family:var(--mono);font-size:0.7rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;">seeked</code><span style="font-size:0.78rem;color:var(--muted);">User seeks to a timestamp</span></div>
+          <div style="padding:0.6rem;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;align-items:center;gap:0.5rem;"><code style="font-family:var(--mono);font-size:0.7rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;">ended</code><span style="font-size:0.78rem;color:var(--muted);">Playback ends</span></div>
+          <div style="padding:0.6rem;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;align-items:center;gap:0.5rem;"><code style="font-family:var(--mono);font-size:0.7rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;">timeupdate</code><span style="font-size:0.78rem;color:var(--muted);">Periodic during playback</span></div>
+        </div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-card-head">
+          <div class="icon-wrap" style="background:rgba(59,130,246,0.1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/></svg>
+          </div>
+          <h3>Implementation</h3>
+        </div>
+        <div class="code-block-dark">window.addEventListener('message', (e) => {
+  if (e.origin !== window.location.origin) return;
+  if (e.data?.type === 'PLAYER_EVENT') {
+    const { event, currentTime, duration }
+      = e.data.data;
+    console.log(
+      `${event} at ${currentTime}s / ${duration}s`
+    );
+  }
+});</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.5rem;"/>
+  VidLink. &nbsp;·&nbsp; 100% Ad-Free
+</footer>
+
+<script>
+  // ── MARQUEE ──
+  const posters = [
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/8mmpltkcG9areafsQHXaURedno3.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/dEsuQOZwdaFAVL26RjgjwGl9j7m.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/5aj8vVGFwGVbQQs26ywhg4Zxk2L.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/bZubW4eLAk2zqk44fSWRDTFfcba.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/b33nnKl1GSFbao4l3fZDDqsMx0F.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
+    'https://media.themoviedb.org/t/p/w220_and_h330_face/6PCnxKZZIVRanWb710pNpYVkCSw.jpg',
+  ];
+
+  function makeCol(imgs, rev) {
+    const col = document.createElement('div');
+    col.className = 'marquee-col' + (rev ? ' rev' : '');
+    // double for seamless loop
+    [...imgs, ...imgs].forEach(src => {
+      const card = document.createElement('div');
+      card.className = 'poster-card';
+      const img = document.createElement('img');
+      img.src = src; img.alt = ''; img.loading = 'lazy';
+      card.appendChild(img);
+      col.appendChild(card);
+    });
+    return col;
+  }
+
+  const wrap = document.getElementById('marquee-wrap');
+  wrap.appendChild(makeCol(posters.slice(0, 4), false));
+  wrap.appendChild(makeCol(posters.slice(4, 8), true));
+  wrap.appendChild(makeCol(posters.slice(0, 4), false));
+
+  // ── PLAYER TABS ──
+  let activeTab = 'movie';
+
+  function switchTab(tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    ['movie','tv'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === tab ? 'flex' : 'none';
+    });
+    if (tab === 'movie') loadMovie();
+    else if (tab === 'tv') loadTV();
+  }
+
+  function setPlayer(url) {
+    document.getElementById('player-iframe').src = url;
+    document.getElementById('current-url').textContent = url;
+  }
+
+  function loadMovie() {
+    const id = document.getElementById('movie-id').value.trim() || '672';
+    setPlayer('/movie/' + id);
+  }
+
+  function loadTV() {
+    const id = document.getElementById('tv-id').value.trim() || '58981';
+    const s  = document.getElementById('tv-s').value.trim() || '1';
+    const e  = document.getElementById('tv-e').value.trim() || '1';
+    setPlayer(`/tv/${id}/${s}/${e}`);
+  }
+
+  function copyURL() {
+    const url = document.getElementById('current-url').textContent;
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓';
+      setTimeout(() => { btn.innerHTML = orig; }, 1200);
+    }).catch(() => {});
+  }
+
+  // Allow Enter key in inputs to load
+  ['movie-id'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadMovie(); });
+  });
+  ['tv-id','tv-s','tv-e'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadTV(); });
+  });
+  const originEl = document.getElementById('origin');
+  if (originEl) originEl.textContent = window.location.origin;
+  </script>
+  </body>
+  </html>

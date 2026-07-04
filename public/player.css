@@ -1,0 +1,150 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+:root{--primary-color:#fff;--secondary-color:rgba(255,255,255,.28);--icon-color:#fff;--poster-display:block}
+body.title-hidden .title-part{display:none}
+body.poster-hidden .loader-poster{display:none}
+body.player-icons-default .cb svg,body.player-icons-default .cc-btn svg{fill:var(--icon-color);stroke:var(--icon-color)}
+
+#player{position:relative;width:100vw;height:100vh;background:#000;overflow:hidden;cursor:none}
+#player.show-ui{cursor:default}
+
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;z-index:1;background:#000}
+
+#caption-overlay{position:absolute;left:50%;bottom:16%;transform:translateX(-50%) translateY(8px);z-index:22;max-width:78%;padding:10px 14px;background:rgba(0,0,0,.68);backdrop-filter:blur(10px);color:#fff;font-size:15px;line-height:1.4;text-align:center;white-space:pre-wrap;word-break:break-word;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+#caption-overlay.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ───────── LOADER ───────── */
+#loader{position:absolute;inset:0;z-index:80;background:#000;transition:opacity .4s ease,visibility .4s ease}
+#loader.gone{opacity:0;visibility:hidden;pointer-events:none}
+.loader-poster{position:absolute;inset:0;background:#000;filter:blur(3px) grayscale(0.3);display:var(--poster-display)}
+.loader-tint{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center}
+.loader-row{display:flex;align-items:center;gap:16px}
+.spinner{width:32px;height:32px;flex-shrink:0}
+.spinner svg{width:100%;height:100%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:14px;font-weight:600;color:#fff;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+
+/* ───────── CENTER TRANSPORT CONTROLS ───────── */
+#center-ctrl{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:25;display:flex;align-items:center;gap:64px;
+  opacity:0;transition:opacity .25s ease;pointer-events:none;
+}
+#player.show-ui #center-ctrl{opacity:1;pointer-events:auto}
+.cc-btn{
+  background:none;border:none;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 1px 5px rgba(0,0,0,.7));
+  transition:transform .12s ease;
+}
+.cc-btn:hover{transform:scale(1.08)}
+.cc-btn.skip{width:48px;height:48px}
+.cc-btn.skip svg{width:48px;height:48px}
+.cc-btn.play{width:56px;height:56px}
+.cc-btn.play svg{width:56px;height:56px;fill:#fff}
+
+/* ───────── GRADIENT ───────── */
+.grad-bottom{position:absolute;bottom:0;left:0;right:0;height:120px;z-index:9;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 100%);pointer-events:none;opacity:0;transition:opacity .3s}
+#player.show-ui .grad-bottom{opacity:1}
+
+/* ───────── BOTTOM CONTROLS ───────── */
+#controls{
+  position:absolute;bottom:0;left:0;right:0;z-index:20;padding:0 18px 14px;
+  opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;pointer-events:none;
+}
+
+.cb svg,.cc-btn svg{fill:var(--icon-color);stroke:var(--icon-color);color:var(--icon-color)}
+#player.show-ui #controls{opacity:1;transform:translateY(0);pointer-events:auto}
+
+#pw{position:relative;height:14px;display:flex;align-items:center;cursor:pointer;margin-bottom:7px}
+#pt{position:absolute;left:0;right:0;height:3px;background:rgba(255,255,255,.28);border-radius:2px;overflow:hidden;transition:height .12s}
+#pw:hover #pt{height:5px}
+#pbuf{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.4);border-radius:2px;width:35%}
+#pf{position:absolute;left:0;top:0;bottom:0;background:var(--primary-color);border-radius:2px;width:0%;transition:width .1s linear}
+#pth{position:absolute;width:11px;height:11px;background:var(--primary-color);border-radius:50%;top:50%;transform:translate(-50%,-50%);left:0%;opacity:0;transition:opacity .12s,left .1s linear;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+#pw:hover #pth{opacity:1}
+
+#cr{display:flex;align-items:center;justify-content:space-between}
+.cl,.cright{display:flex;align-items:center;gap:14px}
+
+.cb{background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;padding:0;opacity:.95;transition:opacity .15s}
+.cb:hover{opacity:1}
+.cb svg{display:block}
+
+#play-btn svg{width:20px;height:20px}
+#mute-btn svg{width:21px;height:21px}
+.icon-cast{width:19px;height:19px}
+.icon-cc{width:23px;height:23px}
+.icon-settings{width:19px;height:19px}
+.icon-pip{width:19px;height:19px}
+.icon-fs{width:18px;height:18px}
+
+.vg{display:flex;align-items:center;gap:7px}
+input[type=range].vs{-webkit-appearance:none;width:52px;height:3px;background:rgba(255,255,255,.3);border-radius:3px;cursor:pointer;outline:none}
+input[type=range].vs::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:#fff;border-radius:50%}
+
+.tdisp{font-size:13px;color:#fff;font-weight:400;letter-spacing:.1px;white-space:nowrap;margin-left:4px}
+.tdisp .sep{color:rgba(255,255,255,.5);margin:0 6px}
+.tdisp .title-part{color:rgba(255,255,255,.85)}
+
+/* ───────── PANELS ───────── */
+.panel{
+  position:absolute;z-index:50;background:rgba(10,10,12,.95);border-radius:12px;
+  min-width:230px;box-shadow:0 10px 40px rgba(0,0,0,.6);
+  opacity:0;visibility:hidden;transform:translateY(6px);
+  transition:opacity .15s,visibility .15s,transform .15s;overflow:hidden;
+}
+.panel.open{opacity:1;visibility:visible;transform:translateY(0)}
+#settings-main,#sub-playback,#sub-captions,#sub-quality{bottom:54px;right:18px}
+
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;font-size:14.5px;font-weight:500;color:#fff;cursor:pointer;transition:background .12s}
+.prow:hover{background:rgba(255,255,255,.08)}
+.prow .picon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff}
+.prow .picon svg{width:18px;height:18px}
+.prow .plabel{flex:1}
+.prow .pval{color:rgba(255,255,255,.45);font-size:13.5px;font-weight:400}
+.prow .pchev{width:14px;height:14px;color:rgba(255,255,255,.4);flex-shrink:0}
+
+.rrow{display:flex;align-items:center;gap:12px;padding:13px 16px;font-size:14.5px;font-weight:500;color:#fff;cursor:pointer;transition:background .12s}
+.rrow:hover{background:rgba(255,255,255,.06)}
+.rrow.selected{background:rgba(255,255,255,.12)}
+.radio{width:17px;height:17px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rrow.selected .radio{border-color:#fff}
+.radio-dot{width:8px;height:8px;border-radius:50%;background:#fff;opacity:0;transition:opacity .12s}
+.rrow.selected .radio-dot{opacity:1}
+.back-row{display:flex;align-items:center;gap:10px;padding:13px 16px;font-size:13px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08)}
+.back-row:hover{color:#fff}
+.back-row svg{width:14px;height:14px}
+
+/* ───────── SKIP FLASH ───────── */
+.skf{position:absolute;top:50%;transform:translateY(-50%);z-index:30;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0;pointer-events:none}
+.skf.l{left:50%;margin-left:-160px}
+.skf.r{left:50%;margin-left:112px}
+.skf.show{animation:skshow .55s ease forwards}
+@keyframes skshow{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+.skf svg{width:32px;height:32px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+
+#caption-overlay {
+  transition: transform 0.25s ease, bottom 0.25s ease, opacity 0.25s ease;
+  bottom: 80px; /* default when UI is visible */
+}
+
+#player:not(.show-ui) #caption-overlay {
+  bottom: 30px;
+  transform: translateX(-50%) translateY(14px);
+}
+
+.spinner-error {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: #ff4d4d;
+}
+
+.spinner-error svg {
+  width: 100%;
+  height: 100%;
+  animation: none !important;
+  stroke: #ff4d4d;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.35));
+}
