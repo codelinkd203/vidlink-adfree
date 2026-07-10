@@ -7,6 +7,10 @@ const BLOCKED_HEADERS = new Set([
   'te',
   'trailer',
   'upgrade',
+
+  // add these
+  'content-encoding',
+  'content-length'
 ]);
 
 module.exports = async function handler(req, res) {
