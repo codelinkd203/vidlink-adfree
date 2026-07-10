@@ -8,7 +8,7 @@ const BLOCKED_HEADERS = new Set([
   'trailer',
   'upgrade',
 
-  // add these
+  // block any encoding
   'content-encoding',
   'content-length'
 ]);
@@ -42,33 +42,29 @@ module.exports = async function handler(req, res) {
 
 
     if (
-      contentType.includes("mpegurl") ||
-      targetUrl.pathname.endsWith(".m3u8")
-    ) {
-      let text = await proxyResp.text();
+    targetUrl.pathname.endsWith(".m3u8") ||
+    proxyResp.headers.get("content-type")?.includes("mpegurl")
+) {
+    let text = await proxyResp.text();
 
-      text = text
-        .split("\n")
-        .map(line => {
-          line = line.trim();
+    text = text.replace(
+        /^([^#].*)$/gm,
+        line => {
+            line = line.trim();
+            if (!line) return line;
 
-          if (
-            line &&
-            !line.startsWith("#") &&
-            !line.startsWith("http")
-          ) {
-            line = new URL(line, targetUrl).href;
-          }
+            const absolute = new URL(line, targetUrl).href;
+            return `/api/proxy?url=${encodeURIComponent(absolute)}`;
+        }
+    );
 
-          return line;
-        })
-        .join("\n");
+    res.setHeader(
+        "Content-Type",
+        "application/vnd.apple.mpegurl"
+    );
 
-      res.setHeader("content-type", "application/vnd.apple.mpegurl");
-
-      return res.send(text);
-    }
-
+    return res.send(text);
+}
 
     return res.send(Buffer.from(await proxyResp.arrayBuffer()));
 
