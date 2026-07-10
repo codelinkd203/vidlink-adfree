@@ -5,52 +5,11 @@ const puppeteer = require('puppeteer-core');
 const CHROMIUM_REMOTE_URL =
   'https://github.com/Sparticuz/chromium/releases/download/v147.0.2/chromium-v147.0.2-pack.x64.tar';
 
-const BASE_URL = process.env.BASE_URL || 'https://vidlink.pro';
+const BASE_URL = process.env.BASE_URL || 'https://vidnest.fun';
 if (!BASE_URL) throw new Error('BASE_URL environment variable is required');
 
 function buildUrl(candidate, base) {
   try { return new URL(candidate, base).toString(); } catch { return null; }
-}
-
-function normalizeQualityKey(key) {
-  return /^\d+$/.test(key) ? `${key}p` : key;
-}
-
-function cleanTracks(captions) {
-  if (!Array.isArray(captions)) return [];
-  return captions
-    .filter((item) => item && item.url)
-    .map((item) => ({
-      language: item.language || item.lang || item.label || 'unknown',
-      url: item.url,
-    }));
-}
-
-function transformData(raw) {
-  const stream = raw.stream || raw;
-  const captions = stream.captions || raw.captions || [];
-  const flags = Array.isArray(raw.flags)
-    ? raw.flags
-    : Array.isArray(stream.flags) ? stream.flags : [];
-  const corsAllowed = flags.includes('cors-allowed');
-
-  let qualities = [];
-  if (stream.qualities && typeof stream.qualities === 'object') {
-    qualities = Object.entries(stream.qualities)
-      .map(([key, value]) => ({
-        quality: normalizeQualityKey(key),
-        url: value && value.url ? value.url : null,
-      }))
-      .filter((item) => item.url)
-      .sort((a, b) => (parseInt(a.quality, 10) || 0) - (parseInt(b.quality, 10) || 0));
-  } else if (stream.url) {
-    qualities = [{ quality: stream.type === 'hls' ? 'hls' : 'auto', url: stream.url }];
-  }
-
-  return {
-    streams: { corsAllowed, qualities },
-    captions: { corsAllowed, tracks: cleanTracks(captions) },
-  };
 }
 
 // Cache the executable path across warm Lambda invocations to skip re-downloading.
@@ -62,10 +21,7 @@ async function getExecutablePath() {
   return _executablePath;
 }
 
-// Resource types that add no value to finding the /api/b/ URL.
-const BLOCKED_TYPES = new Set(['image', 'media', 'font', 'stylesheet', 'other', 'ping', 'manifest']);
-
-async function getApiBUrlFromNetwork(pageUrl) {
+async function getMediaUrlFromNetwork(pageUrl) {
   let browser = null;
 
   try {
@@ -77,89 +33,143 @@ async function getApiBUrlFromNetwork(pageUrl) {
     });
 
     const page = await browser.newPage();
+
     await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36'
     );
 
-    // Intercept every request so we can block junk and bail early.
-    await page.setRequestInterception(true);
+    const mediaUrl = await new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 30000);
 
-    const apiUrl = await new Promise((resolve, reject) => {
-      // Hard ceiling — don't let a slow page hang the function forever.
-      const timer = setTimeout(() => resolve(null), 25000);
-
-      page.on('request', (req) => {
+      page.on('request', req => {
         const url = req.url();
 
-        // Found it — capture and abort the request (we'll fetch it ourselves).
-        if (/\/api\/b\//i.test(url)) {
-          clearTimeout(timer);
-          req.abort();
-          resolve(url);
-          return;
-        }
+        const type = req.resourceType();
 
-        // Drop everything that can't contain the API call.
-        if (BLOCKED_TYPES.has(req.resourceType())) {
-          req.abort();
-        } else {
-          req.continue();
+        const valid =
+          type === 'media' ||
+          /\.m3u8(\?|$)/i.test(url) ||
+          /\.mp4(\?|$)/i.test(url) ||
+          /\.m4s(\?|$)/i.test(url);
+
+        if (valid) {
+          clearTimeout(timer);
+          resolve(url);
         }
       });
 
-      // Use domcontentloaded — we don't need the page to fully settle.
-      page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 25000 })
-        .catch(() => {}); // navigation "errors" are expected when we abort requests
+      page.goto(pageUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000
+      }).catch(() => {});
     });
 
-    return apiUrl;
-  } catch (error) {
-    throw new Error(`Puppeteer navigation failed: ${error.message}`);
+    return mediaUrl;
+
   } finally {
     if (browser) await browser.close();
   }
 }
 
+async function getCaptions(type, id, s, e) {
+  if (type === 'anime') return [];
+
+  try {
+    let url;
+
+    if (type === 'movie') {
+      url = `https://sub.vdrk.site/v2/movie/${encodeURIComponent(id)}`;
+    } else if (type === 'tv') {
+      url = `https://sub.vdrk.site/v2/tv/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(e)}`;
+    } else {
+      return [];
+    }
+
+    const resp = await fetch(url);
+
+    if (!resp.ok) return [];
+
+    const data = await resp.json();
+
+    return Array.isArray(data)
+      ? data
+          .filter(sub => sub.file)
+          .map(sub => ({
+            language: sub.label || 'Unknown',
+            url: sub.file
+          }))
+      : [];
+
+  } catch {
+    return [];
+  }
+}
+
 module.exports = async function handler(req, res) {
   try {
-    const { type, id, s, e } = req.query;
+    const { type, id, s, e, t } = req.query;
     if (!type || !id) {
       return res.status(400).json({ error: 'Missing required type or id' });
     }
 
     let pagePath;
-    if (type === 'movie') {
-      pagePath = `/movie/${encodeURIComponent(id)}/`;
-    } else if (type === 'tv') {
-      if (!s || !e) return res.status(400).json({ error: 'Missing s or e for tv type' });
-      pagePath = `/tv/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(e)}/`;
-    } else {
-      return res.status(400).json({ error: 'Invalid type; expected movie or tv' });
-    }
+
+if (type === 'movie') {
+  pagePath = `/movie/${encodeURIComponent(id)}/`;
+
+} else if (type === 'tv') {
+  if (!s || !e) {
+    return res.status(400).json({ error: 'Missing s or e for tv type' });
+  }
+
+  pagePath = `/tv/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(e)}/`;
+
+} else if (type === 'anime') {
+  if (!s || !t) {
+    return res.status(400).json({ error: 'Missing s or t for anime type' });
+  }
+
+  pagePath = `/anime/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(t)}/`;
+
+} else {
+  return res.status(400).json({
+    error: 'Invalid type; expected movie, tv, or anime'
+  });
+}
 
     const pageUrl = buildUrl(pagePath, BASE_URL);
     if (!pageUrl) return res.status(500).json({ error: 'Failed to build page URL' });
 
-    const apiUrl = await getApiBUrlFromNetwork(pageUrl);
-    if (!apiUrl) {
-      return res.status(502).json({ error: 'Could not locate /api/b/ endpoint from network requests' });
-    }
+    const mediaUrl = await getMediaUrlFromNetwork(pageUrl);
 
-    const apiResp = await fetch(apiUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Node.js)',
-        Accept: 'application/json, text/plain, */*',
+if (!mediaUrl) {
+  return res.status(502).json({
+    error: 'Could not locate media URL'
+  });
+}
+
+const captions = await getCaptions(type, id, s, e);
+
+    return res.json({
+      streams: {
+        corsAllowed: true,
+        qualities: [
+          {
+            quality: "auto",
+            url: mediaUrl
+          }
+        ]
       },
+      captions: {
+        corsAllowed: true,
+        tracks: captions
+      },
+      sourceUrl: mediaUrl
     });
 
-    if (!apiResp.ok) {
-      return res.status(apiResp.status).send(await apiResp.text());
-    }
-
-    const data = transformData(await apiResp.json());
-    data.sourceUrl = apiUrl;
-    return res.json(data);
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({
+      error: error.message || 'Internal server error'
+    });
   }
 };
