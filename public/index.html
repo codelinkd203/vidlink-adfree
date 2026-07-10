@@ -567,6 +567,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab('movie',this)">Movie Player</button>
         <button class="tab" onclick="switchTab('tv',this)">Series Player</button>
+        <button class="tab" onclick="switchTab('anime',this)">Anime Player</button>
       </div>
     </div>
 
@@ -584,6 +585,25 @@
       <button onclick="loadTV()">Load</button>
     </div>
 
+    <div id="tab-anime" class="player-controls" style="display:none">
+  <input id="anime-id"
+       type="text"
+       placeholder="AniList ID (e.g. 21)"
+       value="21"/>
+
+<input id="anime-e"
+       type="text"
+       placeholder="Episode"
+       value="1"
+       style="max-width:90px"/>
+
+<input id="anime-type"
+       type="text"
+       placeholder="sub or dub"
+       value="sub"
+       style="max-width:110px"/>
+  <button onclick="loadAnime()">Load</button>
+</div>
 
     <div class="url-bar">
       <span id="current-url">/movie/672</span>
@@ -693,6 +713,27 @@
   allowfullscreen
 &gt;&lt;/iframe&gt;</div>
     </div>
+
+   <div class="doc-card">
+  <h3>Embed Anime</h3>
+
+  <p class="doc-note">
+    Anime embeds use an <a href="https://anilist.co/" target="_blank" rel="noopener noreferrer">AniList</a> ID, episode number, and stream type (<code style="font-family:var(--mono)">sub</code> or <code style="font-family:var(--mono)">dub</code>).
+  </p>
+
+  <div class="code-pill">
+    <span>&lt;CURRENT_URL&gt;/anime/{anilistId}/{episode}/{sub_or_dub}</span>
+    <button onclick="copyText(window.location.origin + '/anime/{anilistId}/{episode}/{sub_or_dub}',this)" title="Copy">&#10697;</button>
+  </div>
+
+  <p class="code-block-label">Code Example:</p>
+
+  <div class="code-block">&lt;iframe
+  src="&lt;CURRENT_URL&gt;/anime/21/1/sub"
+  frameborder="0"
+  allowfullscreen
+&gt;&lt;/iframe&gt;</div>
+</div>
 
     <div class="doc-card">
     <div class="section-head mt-8">
@@ -923,17 +964,19 @@
     activeTab = tab;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    ['movie','tv'].forEach(t => {
+    ['movie','tv','anime'].forEach(t => {
       document.getElementById('tab-' + t).style.display = t === tab ? 'flex' : 'none';
     });
     if (tab === 'movie') loadMovie();
-    else if (tab === 'tv') loadTV();
+else if (tab === 'tv') loadTV();
+else if (tab === 'anime') loadAnime();
   }
 
   function setPlayer(url) {
-    document.getElementById('player-iframe').src = url;
-    document.getElementById('current-url').textContent = url;
-  }
+  document.getElementById('player-iframe').src = url;
+  document.getElementById('current-url').textContent =
+    window.location.origin + url;
+}
 
   function loadMovie() {
     const id = document.getElementById('movie-id').value.trim() || '672';
@@ -947,6 +990,14 @@
     setPlayer(`/tv/${id}/${s}/${e}`);
   }
 
+  function loadAnime() {
+  const id = document.getElementById('anime-id').value.trim() || '21';
+  const e = document.getElementById('anime-e').value.trim() || '1';
+  const type = document.getElementById('anime-type').value.trim() || 'sub';
+
+  setPlayer(`/anime/${id}/${e}/${type}`);
+}
+  
   function copyURL() {
     const url = document.getElementById('current-url').textContent;
     navigator.clipboard.writeText(url).catch(() => {});
@@ -967,6 +1018,11 @@
   ['tv-id','tv-s','tv-e'].forEach(id => {
     document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') loadTV(); });
   });
+  ['anime-id','anime-e','anime-type'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadAnime();
+  });
+});
   const originEl = document.getElementById('origin');
   if (originEl) originEl.textContent = window.location.origin;
   </script>
