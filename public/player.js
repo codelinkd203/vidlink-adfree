@@ -151,7 +151,7 @@ function parseRouteParams() {
   if (!routeParams.type && animeMatch) {
   routeParams.type = 'anime';
   routeParams.id = animeMatch[1];
-  routeParams.s = animeMatch[2];
+  routeParams.e = animeMatch[2];
   routeParams.t = animeMatch[3];
 }
 }
@@ -174,11 +174,11 @@ function buildScrapeUrl() {
   }
 
   if (routeParams.type === 'anime') {
-  if (!routeParams.s || !routeParams.t) {
+  if (!routeParams.e || !routeParams.t) {
     return null;
   }
 
-  params.set('s', routeParams.s);
+  params.set('s', routeParams.e);
   params.set('t', routeParams.t);
 }
 
