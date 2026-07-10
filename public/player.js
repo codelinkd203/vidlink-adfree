@@ -205,7 +205,7 @@ function setLoaderPoster(url) {
 }
 
 function getRouteKey() {
-  return `${STORAGE_PREFIX}:${routeParams.type}:${routeParams.id}:${routeParams.s || ''}:${routeParams.e || ''}`;
+  return `${STORAGE_PREFIX}:${routeParams.type}:${routeParams.id}:${routeParams.s || ''}:${routeParams.e || ''}:${routeParams.t || ''}`;
 }
 
 function loadCachedData() {
@@ -340,6 +340,29 @@ function setTmdbMetadata(showData, episodeData) {
   }
 }
 
+function setAnilistMetadata(animeData) {
+  if (!animeData) return;
+
+  const title =
+    animeData.title?.english ||
+    animeData.title?.romaji ||
+    animeData.title?.native ||
+    "Unknown Anime";
+
+  const episode = routeParams.e || routeParams.t || "";
+
+  const finalTitle = episode
+    ? `${title} - Episode ${episode} | VidLink`
+    : `${title} | VidLink`;
+
+  titlePart.textContent = finalTitle;
+  document.title = finalTitle;
+
+  if (animeData.coverImage?.extraLarge) {
+    setLoaderPoster(animeData.coverImage.extraLarge);
+  }
+}
+
 async function fetchTmdbShow() {
   if (routeParams.type !== "tv") return null;
 
@@ -351,6 +374,40 @@ async function fetchTmdbShow() {
   } catch {
     return null;
   }
+}
+
+async function fetchAnilistAnime(id) {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        title {
+          romaji
+          english
+          native
+        }
+        coverImage {
+          extraLarge
+        }
+        episodes
+      }
+    }
+  `;
+
+  const response = await fetch("https://graphql.anilist.co", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        id: Number(id)
+      }
+    })
+  });
+
+  const json = await response.json();
+  return json.data?.Media || null;
 }
 
 function showUI() {
@@ -669,12 +726,15 @@ async function fetchStreamData() {
       cached = loadCachedData();
     }
 
-    streamData = data;
-    streamData.showTitle = data.title || data.name || data.original_title;
-    const tmdbShow = await fetchTmdbShow();
-    const tmdbEpisode = await fetchTmdbMetadata();
+    if (routeParams.type === "anime") {
+  const animeData = await fetchAnilistAnime(routeParams.id);
+  setAnilistMetadata(animeData);
+} else {
+  const tmdbShow = await fetchTmdbShow();
+  const tmdbEpisode = await fetchTmdbMetadata();
 
-    setTmdbMetadata(tmdbShow, tmdbEpisode);
+  setTmdbMetadata(tmdbShow, tmdbEpisode);
+}
 
     const qualities = data.streams?.qualities || [];
     const captions = data.captions?.tracks || data.captions || [];
