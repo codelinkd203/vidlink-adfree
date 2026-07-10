@@ -56,6 +56,7 @@ const routeParams = {
   id: null,
   s: null,
   e: null,
+  t: null,
 };
 
 function parseBoolean(value, fallback = false) {
@@ -128,10 +129,12 @@ function parseRouteParams() {
   routeParams.id = params.get('id');
   routeParams.s = params.get('s');
   routeParams.e = params.get('e');
+  routeParams.t = params.get('t');
 
   const path = window.location.pathname.replace(/\/+$/, '');
   const movieMatch = path.match(/^\/movie\/([^/]+)$/i);
   const tvMatch = path.match(/^\/tv\/([^/]+)\/([^/]+)\/([^/]+)$/i);
+  const animeMatch = path.match(/^\/anime\/([^/]+)\/([^/]+)\/([^/]+)$/i);
 
   if (!routeParams.type && movieMatch) {
     routeParams.type = 'movie';
@@ -144,6 +147,13 @@ function parseRouteParams() {
     routeParams.s = tvMatch[2];
     routeParams.e = tvMatch[3];
   }
+
+  if (!routeParams.type && animeMatch) {
+  routeParams.type = 'anime';
+  routeParams.id = animeMatch[1];
+  routeParams.s = animeMatch[2];
+  routeParams.t = animeMatch[3];
+}
 }
 
 function buildScrapeUrl() {
@@ -162,6 +172,15 @@ function buildScrapeUrl() {
     params.set('s', routeParams.s);
     params.set('e', routeParams.e);
   }
+
+  if (routeParams.type === 'anime') {
+  if (!routeParams.s || !routeParams.t) {
+    return null;
+  }
+
+  params.set('s', routeParams.s);
+  params.set('t', routeParams.t);
+}
 
   return `/api/scrape?${params.toString()}`;
 }
