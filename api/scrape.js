@@ -125,12 +125,12 @@ if (type === 'movie') {
   pagePath = `/tv/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(e)}/`;
 
 } else if (type === 'anime') {
-  if (!s || !t) {
-    return res.status(400).json({ error: 'Missing s or t for anime type' });
+  if (!e || !t) {
+    return res.status(400).json({ error: 'Missing e or t for anime type' });
   }
 
-  pagePath = `/anime/${encodeURIComponent(id)}/${encodeURIComponent(s)}/${encodeURIComponent(t)}/`;
-
+  pagePath = `/anime/${encodeURIComponent(id)}/${encodeURIComponent(e)}/${encodeURIComponent(t)}/`;
+  
 } else {
   return res.status(400).json({
     error: 'Invalid type; expected movie, tv, or anime'
