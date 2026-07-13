@@ -481,7 +481,7 @@ function doDownload(event) {
   const qualityText = currentQuality || 'video';
   const anchor = document.createElement('a');
   anchor.href = downloadUrl;
-  anchor.download = `${title}-${qualityText}.mp4`;
+  anchor.download = `${title} - ${qualityText}.mp4`;
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
   document.body.appendChild(anchor);
@@ -910,8 +910,7 @@ function selectQuality(quality) {
   const wasPlaying = playing || playerOptions.autoplay;
 
   const directUrl = quality.url;
-  const shouldProxy = !streamData?.streams?.corsAllowed;
-  const chosenUrl = shouldProxy ? getProxyUrl(directUrl) : directUrl;
+  const chosenUrl = isStream ? getProxyUrl(directUrl) : directUrl;
 
   // IMPORTANT: kill old listeners (prevents stacking bugs)
   video.onloadedmetadata = null;
