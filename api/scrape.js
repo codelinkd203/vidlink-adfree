@@ -38,36 +38,46 @@ async function getMediaUrlFromNetwork(pageUrl) {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36'
     );
 
+    await page.setRequestInterception(true);
+
     const mediaUrl = await new Promise((resolve) => {
       const timer = setTimeout(() => resolve(null), 30000);
 
-      page.on('request', req => {
+      page.on('request', (req) => {
         const url = req.url();
-
         const type = req.resourceType();
 
-        const valid =
+        const isMedia =
           type === 'media' ||
           /\.m3u8(\?|$)/i.test(url) ||
+          /\.mpd(\?|$)/i.test(url) ||
           /\.mp4(\?|$)/i.test(url) ||
-          /\.m4s(\?|$)/i.test(url);
+          /\.m4s(\?|$)/i.test(url) ||
+          /\.ts(\?|$)/i.test(url);
 
-        if (valid) {
+        if (isMedia) {
           clearTimeout(timer);
           resolve(url);
+
+          // Capture the URL but prevent the browser from downloading it.
+          return req.abort();
         }
+
+        req.continue();
       });
 
       page.goto(pageUrl, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 30000,
       }).catch(() => {});
     });
 
     return mediaUrl;
 
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
