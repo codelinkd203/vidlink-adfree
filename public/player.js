@@ -999,7 +999,6 @@ function selectQuality(quality) {
 
     setLoaderText('Sorry... this content is unavailible at the moment.');
   };
-}
 
 function parseCueTime(value) {
   const cleaned = value.trim().replace(',', '.');
