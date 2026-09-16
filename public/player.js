@@ -816,6 +816,7 @@ function showErrorIcon() {
     window.location.href = "https://vidsrc-embed.ru/embed" + window.location.pathname;
   }
 }, 1000);   
+}
 
 function updateCacheSelection() {
   const cached = loadCachedData();
