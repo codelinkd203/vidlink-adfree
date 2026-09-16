@@ -895,52 +895,95 @@ function renderCaptionOptions(captions) {
 function selectQuality(quality) {
   if (!quality || !quality.url) return;
 
-  currentQuality = quality?.quality || null;
-  currentQualityData = quality || null;
+  currentQuality = quality.quality || null;
+  currentQualityData = quality;
+
   updateDownloadButtonVisibility();
   updateCacheSelection();
+
   const isStream = isStreamQuality(quality);
-  if (isStream) {
-    downloadBtn.style.display = 'none';
-  } else {
-    downloadBtn.style.display = 'flex';
+
+  if (downloadBtn) {
+    downloadBtn.style.display = isStream ? 'none' : 'flex';
   }
 
   const currentTime = video.currentTime || 0;
   const wasPlaying = playing || playerOptions.autoplay;
-
   const directUrl = quality.url;
   const chosenUrl = isStream ? getProxyUrl(directUrl) : directUrl;
 
-  // IMPORTANT: kill old listeners (prevents stacking bugs)
-  video.onloadedmetadata = null;
-  video.onerror = null;
-
+  // Reset the video cleanly
   video.pause();
-
-  // load new source
-  video.src = chosenUrl;
+  video.removeAttribute('src');
   video.load();
 
   let resumed = false;
+  let retrying = false;
 
   const resume = () => {
     if (resumed) return;
     resumed = true;
 
-    const seekTo = playerOptions.startAt > 0 ? playerOptions.startAt : currentTime;
-    if (video.seekable?.length && seekTo) {
+    const seekTime =
+      playerOptions.startAt > 0
+        ? playerOptions.startAt
+        : currentTime;
+
+    if (seekTime > 0) {
       try {
-        video.currentTime = seekTo;
+        video.currentTime = seekTime;
       } catch {}
     }
 
+    hideLoader();
+
     if (wasPlaying) {
-      video.play().catch(() => {});
+      video.play()
+        .then(() => {
+          playing = true;
+          setIcons(true);
+        })
+        .catch(() => {
+          // Browser may require user interaction before autoplay.
+          playing = false;
+          setIcons(false);
+        });
+    }
+  };
+
+  const handleError = () => {
+    if (retrying) {
+      setLoaderText('Sorry... this content is unavailable at the moment.');
+      return;
     }
 
-    hideLoader();
+    // Try the direct URL if the proxy failed,
+    // or the proxy if the direct URL failed.
+    retrying = true;
+
+    const fallback = chosenUrl === directUrl
+      ? getProxyUrl(directUrl)
+      : directUrl;
+
+    video.src = fallback;
+    video.load();
   };
+
+  video.onloadedmetadata = resume;
+  video.oncanplay = resume;
+  video.onerror = handleError;
+
+  showLoader('Loading stream...');
+
+  video.src = chosenUrl;
+  video.load();
+
+  // Some browsers can already have enough data before
+  // the event handlers above get a chance to run.
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    resume();
+  }
+}
 
   video.addEventListener('loadedmetadata', resume, { once: true });
 
@@ -949,7 +992,6 @@ function selectQuality(quality) {
       video.src = getProxyUrl(directUrl);
       video.load();
       video.addEventListener('loadedmetadata', resume, { once: true });
-      return;
 
     if (playerOptions.fallbackUrl) {
       window.location.replace(playerOptions.fallbackUrl);
