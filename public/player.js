@@ -945,13 +945,11 @@ function selectQuality(quality) {
   video.addEventListener('loadedmetadata', resume, { once: true });
 
   video.onerror = () => {
-    if (!shouldProxy) {
       // retry with proxy
       video.src = getProxyUrl(directUrl);
       video.load();
       video.addEventListener('loadedmetadata', resume, { once: true });
       return;
-    }
 
     if (playerOptions.fallbackUrl) {
       window.location.replace(playerOptions.fallbackUrl);
