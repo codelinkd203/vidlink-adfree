@@ -817,8 +817,6 @@ function showErrorIcon() {
   }
 }, 1000);   
 
-}
-
 function updateCacheSelection() {
   const cached = loadCachedData();
   if (!cached) return;
