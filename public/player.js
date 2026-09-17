@@ -984,22 +984,6 @@ function selectQuality(quality) {
   }
 }
 
-  video.addEventListener('loadedmetadata', resume, { once: true });
-
-  video.onerror = () => {
-      // retry with proxy
-      video.src = getProxyUrl(directUrl);
-      video.load();
-      video.addEventListener('loadedmetadata', resume, { once: true });
-
-    if (playerOptions.fallbackUrl) {
-      window.location.replace(playerOptions.fallbackUrl);
-      return;
-    }
-
-    setLoaderText('Sorry... this content is unavailible at the moment.');
-  };
-
 function parseCueTime(value) {
   const cleaned = value.trim().replace(',', '.');
   const match = cleaned.match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/);
