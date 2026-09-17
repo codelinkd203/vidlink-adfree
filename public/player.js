@@ -900,29 +900,23 @@ function selectQuality(quality) {
   updateDownloadButtonVisibility();
   updateCacheSelection();
 
-  const isStream = isStreamQuality(quality);
-
-  if (downloadBtn) {
-    downloadBtn.style.display = isStream ? 'none' : 'flex';
-  }
-
+  const directUrl = quality.url;
   const currentTime = video.currentTime || 0;
   const wasPlaying = playing || playerOptions.autoplay;
-  const directUrl = quality.url;
-  const chosenUrl = isStream ? getProxyUrl(directUrl) : directUrl;
 
-  // Reset the video cleanly
+  showLoader('Loading stream...');
+
+  // Destroy previous HLS instance
+  if (window.streamHls) {
+    window.streamHls.destroy();
+    window.streamHls = null;
+  }
+
   video.pause();
   video.removeAttribute('src');
   video.load();
 
-  let resumed = false;
-  let retrying = false;
-
   const resume = () => {
-    if (resumed) return;
-    resumed = true;
-
     const seekTime =
       playerOptions.startAt > 0
         ? playerOptions.startAt
@@ -937,51 +931,62 @@ function selectQuality(quality) {
     hideLoader();
 
     if (wasPlaying) {
-      video.play()
-        .then(() => {
-          playing = true;
-          setIcons(true);
-        })
-        .catch(() => {
-          // Browser may require user interaction before autoplay.
-          playing = false;
-          setIcons(false);
-        });
+      video.play().then(() => {
+        playing = true;
+        setIcons(true);
+      }).catch(() => {
+        playing = false;
+        setIcons(false);
+      });
     }
   };
 
-  const handleError = () => {
-    if (retrying) {
-      setLoaderText('Sorry... this content is unavailable at the moment.');
-      return;
+  // HLS stream
+  if (isStreamQuality(quality)) {
+    const streamUrl = getProxyUrl(directUrl);
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari / native HLS
+      video.src = streamUrl;
+      video.load();
+
+      video.addEventListener('loadedmetadata', resume, { once: true });
+      video.addEventListener('canplay', resume, { once: true });
+
+    } else if (window.Hls && Hls.isSupported()) {
+      // Chrome / Firefox / Edge
+      const hls = new Hls();
+
+      window.streamHls = hls;
+
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        resume();
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('HLS error:', data);
+
+        if (data.fatal) {
+          setLoaderText('Unable to play this stream.');
+        }
+      });
+
+    } else {
+      setLoaderText('HLS is not supported by this browser.');
     }
 
-    // Try the direct URL if the proxy failed,
-    // or the proxy if the direct URL failed.
-    retrying = true;
+    return;
+  }
 
-    const fallback = chosenUrl === directUrl
-      ? getProxyUrl(directUrl)
-      : directUrl;
-
-    video.src = fallback;
-    video.load();
-  };
-
-  video.onloadedmetadata = resume;
-  video.oncanplay = resume;
-  video.onerror = handleError;
-
-  showLoader('Loading stream...');
-
-  video.src = chosenUrl;
+  // Normal MP4/etc.
+  video.src = directUrl;
   video.load();
 
-  // Some browsers can already have enough data before
-  // the event handlers above get a chance to run.
-  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    resume();
-  }
+  video.addEventListener('loadedmetadata', resume, { once: true });
+  video.addEventListener('canplay', resume, { once: true });
 }
 
 function parseCueTime(value) {
