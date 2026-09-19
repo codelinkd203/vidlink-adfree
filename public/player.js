@@ -906,9 +906,11 @@ function selectQuality(quality) {
 
   showLoader('Loading stream...');
 
-  // Destroy previous HLS instance
+  // Kill previous HLS instance
   if (window.streamHls) {
-    window.streamHls.destroy();
+    try {
+      window.streamHls.destroy();
+    } catch {}
     window.streamHls = null;
   }
 
@@ -916,77 +918,96 @@ function selectQuality(quality) {
   video.removeAttribute('src');
   video.load();
 
-  const resume = () => {
+  const startPlayback = () => {
     const seekTime =
       playerOptions.startAt > 0
         ? playerOptions.startAt
         : currentTime;
 
-    if (seekTime > 0) {
+    if (seekTime > 0 && Number.isFinite(seekTime)) {
       try {
         video.currentTime = seekTime;
       } catch {}
     }
 
-    hideLoader();
-
-    if (wasPlaying) {
-      video.play().then(() => {
+    // Just tell the browser to play.
+    // It will wait for enough data internally.
+    video.play()
+      .then(() => {
         playing = true;
         setIcons(true);
-      }).catch(() => {
+        hideLoader();
+        showUI();
+      })
+      .catch((error) => {
+        console.warn('Playback could not start:', error);
         playing = false;
         setIcons(false);
+        hideLoader();
       });
-    }
   };
 
-  // HLS stream
+  // ─────────────────────────────
+  // HLS
+  // ─────────────────────────────
   if (isStreamQuality(quality)) {
     const streamUrl = getProxyUrl(directUrl);
 
+    // Safari / iPhone / iPad / native HLS
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari / native HLS
       video.src = streamUrl;
       video.load();
 
-      video.addEventListener('loadedmetadata', resume, { once: true });
-      video.addEventListener('canplay', resume, { once: true });
+      startPlayback();
+      return;
+    }
 
-    } else if (window.Hls && Hls.isSupported()) {
-      // Chrome / Firefox / Edge
-      const hls = new Hls();
+    // Chrome / Firefox / Edge
+    if (window.Hls && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+      });
 
       window.streamHls = hls;
 
-      hls.loadSource(streamUrl);
       hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        resume();
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        hls.loadSource(streamUrl);
+
+        // Don't wait for MANIFEST_PARSED/canplay/etc.
+        startPlayback();
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('HLS error:', data);
 
         if (data.fatal) {
+          console.error('Fatal HLS error:', data);
+
+          try {
+            hls.destroy();
+          } catch {}
+
+          window.streamHls = null;
           setLoaderText('Unable to play this stream.');
         }
       });
 
-    } else {
-      setLoaderText('HLS is not supported by this browser.');
+      return;
     }
 
+    setLoaderText('HLS is not supported by this browser.');
     return;
   }
 
-  // Normal MP4/etc.
+  // ─────────────────────────────
+  // Normal MP4 / WebM / etc.
+  // ─────────────────────────────
   video.src = directUrl;
   video.load();
 
-  video.addEventListener('loadedmetadata', resume, { once: true });
-  video.addEventListener('canplay', resume, { once: true });
+  startPlayback();
 }
 
 function parseCueTime(value) {
