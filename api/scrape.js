@@ -5,10 +5,10 @@ const CHROMIUM_REMOTE_URL =
   'https://github.com/Sparticuz/chromium/releases/download/v147.0.2/chromium-v147.0.2-pack.x64.tar';
 
 const VIDNEST_BASE_URL =
-  process.env.BASE_URL || 'https://poop.example';
+  process.env.BASE_URL || 'https://vidnest.fun';
 
 const CINESRC_BASE_URL =
-  process.env.CINESRC_BASE_URL || 'https://poop2.example';
+  process.env.CINESRC_BASE_URL || 'https://cinesrc.st';
 
 const STREAM_TYPES = {
   hls: new Set([
