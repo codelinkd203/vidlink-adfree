@@ -5,10 +5,10 @@ const CHROMIUM_REMOTE_URL =
   'https://github.com/Sparticuz/chromium/releases/download/v147.0.2/chromium-v147.0.2-pack.x64.tar';
 
 const VIDNEST_BASE_URL =
-  process.env.BASE_URL || 'https://vidnest.fun';
+  process.env.BASE_URL || 'https://poop.example';
 
-const CIN_SRC_BASE_URL =
-  process.env.CINESRC_BASE_URL || 'https://cinesrc.st';
+const CINESRC_BASE_URL =
+  process.env.CINESRC_BASE_URL || 'https://poop2.example';
 
 const STREAM_TYPES = {
   hls: new Set([
@@ -23,23 +23,27 @@ const STREAM_TYPES = {
   ])
 };
 
-function buildUrl(candidate, base) {
+let executablePathCache = null;
+
+async function getExecutablePath() {
+  if (!executablePathCache) {
+    executablePathCache =
+      await chromium.executablePath(CHROMIUM_REMOTE_URL);
+  }
+
+  return executablePathCache;
+}
+
+function buildUrl(path, base) {
   try {
-    return new URL(candidate, base).toString();
+    return new URL(path, base).toString();
   } catch {
     return null;
   }
 }
 
-let _executablePath = null;
-
-async function getExecutablePath() {
-  if (!_executablePath) {
-    _executablePath =
-      await chromium.executablePath(CHROMIUM_REMOTE_URL);
-  }
-
-  return _executablePath;
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function getMediaUrlFromNetwork(pageUrl) {
@@ -75,7 +79,7 @@ async function getMediaUrlFromNetwork(pageUrl) {
 
       const responseUrl = response.url();
       const request = response.request();
-      const headers = request.headers();
+      const requestHeaders = request.headers();
 
       const contentType = (
         response.headers()['content-type'] || ''
@@ -86,49 +90,41 @@ async function getMediaUrlFromNetwork(pageUrl) {
 
       let type = null;
 
-      // Detect by MIME type first.
       if (STREAM_TYPES.hls.has(contentType)) {
         type = 'hls';
       } else if (STREAM_TYPES.dash.has(contentType)) {
         type = 'dash';
       }
 
-      // Fall back to the manifest extension.
-      if (!type) {
-        if (/\.m3u8(?:[?#]|$)/i.test(responseUrl)) {
-          type = 'hls';
-        } else if (/\.mpd(?:[?#]|$)/i.test(responseUrl)) {
-          type = 'dash';
-        }
+      if (!type && /\.m3u8(?:[?#]|$)/i.test(responseUrl)) {
+        type = 'hls';
+      }
+
+      if (!type && /\.mpd(?:[?#]|$)/i.test(responseUrl)) {
+        type = 'dash';
       }
 
       if (!type) return;
 
-      const origin = headers.origin || pageOrigin;
-
       stream = {
         stream: responseUrl,
-        origin,
+        origin: requestHeaders.origin || pageOrigin,
         type,
         mime: contentType
       };
-
-      console.log('Found stream:');
-      console.log('Stream:', responseUrl);
-      console.log('Origin:', origin);
-      console.log('Type:', type);
-      console.log('MIME:', contentType);
     });
 
+    // Don't let page navigation prevent the scraper from continuing.
     await page.goto(pageUrl, {
       waitUntil: 'domcontentloaded',
-      timeout: 30000
+      timeout: 15000
     }).catch(() => {});
 
-    const start = Date.now();
+    // Give the embedded player time to initialize.
+    const started = Date.now();
 
-    while (!stream && Date.now() - start < 15000) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    while (!stream && Date.now() - started < 15000) {
+      await sleep(100);
     }
 
     return stream;
@@ -185,7 +181,7 @@ function getSourcePage(type, id, s, e, t) {
   if (type === 'movie') {
     return buildUrl(
       `/embed/movie/${encodeURIComponent(id)}`,
-      CIN_SRC_BASE_URL
+      CINESRC_BASE_URL
     );
   }
 
@@ -196,7 +192,7 @@ function getSourcePage(type, id, s, e, t) {
       `/embed/tv/${encodeURIComponent(id)}` +
       `?s=${encodeURIComponent(s)}` +
       `&e=${encodeURIComponent(e)}`,
-      CIN_SRC_BASE_URL
+      CINESRC_BASE_URL
     );
   }
 
@@ -262,23 +258,24 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    console.log('Loading source:', pageUrl);
-
     const media = await getMediaUrlFromNetwork(pageUrl);
 
     if (!media) {
       return res.status(502).json({
-        error: 'Could not locate HLS or DASH media URL'
+        error: 'Could not locate HLS or DASH manifest'
       });
     }
 
-    const captions =
-      await getCaptions(type, id, s, e);
+    const captions = await getCaptions(
+      type,
+      id,
+      s,
+      e
+    );
 
     return res.json({
       streams: {
         corsAllowed: true,
-
         qualities: [
           {
             quality: 'auto',
@@ -295,10 +292,7 @@ module.exports = async function handler(req, res) {
         tracks: captions
       },
 
-      sourceUrl: media.stream,
-      origin: media.origin,
-      type: media.type,
-      mime: media.mime
+      sourceUrl: media.stream
     });
 
   } catch (error) {
