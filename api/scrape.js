@@ -10,18 +10,16 @@ const VIDNEST_BASE_URL =
 const CINESRC_BASE_URL =
   process.env.CINESRC_BASE_URL || 'https://cinesrc.st';
 
-const STREAM_TYPES = {
-  hls: new Set([
-    'application/vnd.apple.mpegurl',
-    'application/x-mpegurl',
-    'audio/mpegurl',
-    'audio/x-mpegurl'
-  ]),
+const HLS_MIMES = new Set([
+  'application/vnd.apple.mpegurl',
+  'application/x-mpegurl',
+  'audio/mpegurl',
+  'audio/x-mpegurl'
+]);
 
-  dash: new Set([
-    'application/dash+xml'
-  ])
-};
+const DASH_MIMES = new Set([
+  'application/dash+xml'
+]);
 
 let executablePathCache = null;
 
@@ -72,62 +70,98 @@ async function getMediaUrlFromNetwork(pageUrl) {
       return null;
     }
 
-    let stream = null;
+    /*
+     * This promise is created BEFORE navigation.
+     *
+     * We are NOT looking for ".m3u8".
+     * We identify HLS from the actual response MIME type.
+     */
+    const streamPromise = new Promise(resolve => {
+      let finished = false;
 
-    page.on('response', response => {
-      if (stream) return;
-
-      const responseUrl = response.url();
-      const request = response.request();
-      const requestHeaders = request.headers();
-
-      const contentType = (
-        response.headers()['content-type'] || ''
-      )
-        .split(';')[0]
-        .trim()
-        .toLowerCase();
-
-      let type = null;
-
-      if (STREAM_TYPES.hls.has(contentType)) {
-        type = 'hls';
-      } else if (STREAM_TYPES.dash.has(contentType)) {
-        type = 'dash';
-      }
-
-      if (!type && /\.m3u8(?:[?#]|$)/i.test(responseUrl)) {
-        type = 'hls';
-      }
-
-      if (!type && /\.mpd(?:[?#]|$)/i.test(responseUrl)) {
-        type = 'dash';
-      }
-
-      if (!type) return;
-
-      stream = {
-        stream: responseUrl,
-        origin: requestHeaders.origin || pageOrigin,
-        type,
-        mime: contentType
+      const finish = value => {
+        if (finished) return;
+        finished = true;
+        resolve(value);
       };
+
+      const timeout = setTimeout(() => {
+        finish(null);
+      }, 20000);
+
+      page.on('response', async response => {
+        if (finished) return;
+
+        const responseUrl = response.url();
+        const responseHeaders = response.headers();
+
+        const mime = (
+          responseHeaders['content-type'] || ''
+        )
+          .split(';')[0]
+          .trim()
+          .toLowerCase();
+
+        let type = null;
+
+        /*
+         * HLS detection is MIME-based.
+         */
+        if (HLS_MIMES.has(mime)) {
+          type = 'hls';
+        }
+
+        /*
+         * DASH detection is MIME-based too.
+         */
+        else if (DASH_MIMES.has(mime)) {
+          type = 'dash';
+        }
+
+        if (!type) return;
+
+        clearTimeout(timeout);
+
+        const requestHeaders =
+          response.request().headers();
+
+        const origin =
+          requestHeaders['origin'] ||
+          pageOrigin;
+
+        const stream = {
+          stream: responseUrl,
+          origin,
+          type,
+          mime
+        };
+
+        console.log('Found stream:');
+        console.log('Stream:', responseUrl);
+        console.log('Origin:', origin);
+        console.log('Type:', type);
+        console.log('MIME:', mime);
+
+        finish(stream);
+      });
     });
 
-    // Don't let page navigation prevent the scraper from continuing.
-    await page.goto(pageUrl, {
+    /*
+     * Start navigation without waiting for it to finish.
+     *
+     * This is important because the player can make the
+     * HLS request while navigation is still occurring.
+     */
+    page.goto(pageUrl, {
       waitUntil: 'domcontentloaded',
-      timeout: 15000
+      timeout: 30000
     }).catch(() => {});
 
-    // Give the embedded player time to initialize.
-    const started = Date.now();
-
-    while (!stream && Date.now() - started < 15000) {
-      await sleep(100);
-    }
-
-    return stream;
+    /*
+     * The response listener above is already active, so
+     * the FIRST HLS response is captured.
+     */
+    return await streamPromise;
 
   } finally {
     if (browser) {
@@ -146,7 +180,6 @@ async function getCaptions(type, id, s, e) {
       url =
         `https://sub.vdrk.site/v2/movie/` +
         `${encodeURIComponent(id)}`;
-
     } else if (type === 'tv') {
       url =
         `https://sub.vdrk.site/v2/tv/` +
@@ -258,20 +291,19 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const media = await getMediaUrlFromNetwork(pageUrl);
+    console.log('Loading source:', pageUrl);
+
+    const media =
+      await getMediaUrlFromNetwork(pageUrl);
 
     if (!media) {
       return res.status(502).json({
-        error: 'Could not locate HLS or DASH manifest'
+        error: 'Could not locate HLS or DASH stream'
       });
     }
 
-    const captions = await getCaptions(
-      type,
-      id,
-      s,
-      e
-    );
+    const captions =
+      await getCaptions(type, id, s, e);
 
     return res.json({
       streams: {
@@ -279,10 +311,7 @@ module.exports = async function handler(req, res) {
         qualities: [
           {
             quality: 'auto',
-            url: media.stream,
-            type: media.type,
-            mime: media.mime,
-            origin: media.origin
+            url: media.stream
           }
         ]
       },
@@ -299,7 +328,9 @@ module.exports = async function handler(req, res) {
     console.error(error);
 
     return res.status(500).json({
-      error: error.message || 'Internal server error'
+      error:
+        error.message ||
+        'Internal server error'
     });
   }
 };
