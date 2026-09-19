@@ -7,14 +7,6 @@ const CHROMIUM_REMOTE_URL =
 const VIDNEST_URL = process.env.BASE_URL || 'https://vidnest.fun';
 const CINESRC_URL = 'https://cinesrc.st';
 
-function buildUrl(path, base) {
-    try {
-        return new URL(path, base).toString();
-    } catch {
-        return null;
-    }
-}
-
 let executablePath = null;
 
 async function getExecutablePath() {
@@ -27,8 +19,16 @@ async function getExecutablePath() {
     return executablePath;
 }
 
+function buildUrl(path, base) {
+    try {
+        return new URL(path, base).toString();
+    } catch {
+        return null;
+    }
+}
+
 async function scrapeStream(pageUrl) {
-    let browser = null;
+    let browser;
 
     try {
         browser = await puppeteer.launch({
@@ -46,100 +46,51 @@ async function scrapeStream(pageUrl) {
             'Chrome/120.0.0.0 Safari/537.36'
         );
 
-        const result = await new Promise(resolve => {
-            let finished = false;
+        const stream = await new Promise(resolve => {
+            let done = false;
 
-            const finish = value => {
-                if (finished) return;
-
-                finished = true;
-                clearTimeout(timeout);
-                resolve(value);
-            };
-
-            const timeout = setTimeout(() => {
-                finish(null);
+            const timer = setTimeout(() => {
+                if (!done) {
+                    done = true;
+                    resolve(null);
+                }
             }, 30000);
 
-            /*
-             * Catch the request itself.
-             *
-             * This is intentionally done before page.goto(), so we
-             * don't miss the first manifest request.
-             */
+            // ONLY LOOK AT REQUESTS.
             page.on('request', request => {
-                if (finished) return;
+                if (done) return;
 
                 const url = request.url();
 
-                if (/\.m3u8(?:[?#]|$)/i.test(url)) {
-                    const headers = request.headers();
+                console.log('[SCRAPER REQUEST]', url);
 
-                    let pageOrigin;
+                // First request containing .m3u8 wins.
+                if (url.toLowerCase().includes('.m3u8')) {
+                    done = true;
+                    clearTimeout(timer);
 
-                    try {
-                        pageOrigin = new URL(pageUrl).origin;
-                    } catch {
-                        pageOrigin = pageUrl;
-                    }
+                    console.log('[SCRAPER HLS FOUND]', url);
 
-                    finish({
+                    resolve({
                         stream: url,
-                        origin: headers.origin || pageOrigin,
+                        origin: request.headers().origin || new URL(pageUrl).origin,
                         type: 'hls',
                         mime: 'application/vnd.apple.mpegurl'
                     });
                 }
             });
 
-            /*
-             * Also watch responses as a fallback.
-             */
-            page.on('response', response => {
-                if (finished) return;
-
-                const url = response.url();
-
-                const contentType = (
-                    response.headers()['content-type'] || ''
-                )
-                    .split(';')[0]
-                    .trim()
-                    .toLowerCase();
-
-                const isHlsMime =
-                    contentType === 'application/vnd.apple.mpegurl' ||
-                    contentType === 'application/x-mpegurl' ||
-                    contentType === 'audio/mpegurl' ||
-                    contentType === 'audio/x-mpegurl';
-
-                if (isHlsMime) {
-                    const headers = response.request().headers();
-
-                    let pageOrigin;
-
-                    try {
-                        pageOrigin = new URL(pageUrl).origin;
-                    } catch {
-                        pageOrigin = pageUrl;
-                    }
-
-                    finish({
-                        stream: url,
-                        origin: headers.origin || pageOrigin,
-                        type: 'hls',
-                        mime: contentType
-                    });
-                }
-            });
-
+            // Do NOT wait for navigation.
+            // Start it and immediately let the request listener work.
             page.goto(pageUrl, {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
-            }).catch(() => {});
+            }).catch(error => {
+                console.log('[SCRAPER NAV ERROR]', error.message);
+            });
         });
 
-        return result;
+        return stream;
 
     } finally {
         if (browser) {
@@ -158,8 +109,7 @@ async function getCaptions(type, id, s, e) {
 
         if (type === 'movie') {
             url =
-                `https://sub.vdrk.site/v2/movie/` +
-                `${encodeURIComponent(id)}`;
+                `https://sub.vdrk.site/v2/movie/${encodeURIComponent(id)}`;
         } else if (type === 'tv') {
             url =
                 `https://sub.vdrk.site/v2/tv/` +
@@ -210,11 +160,6 @@ module.exports = async function handler(req, res) {
 
         let pageUrl;
 
-        /*
-         * MOVIE + TV
-         * -------------------------
-         * These come from CineSrc.
-         */
         if (type === 'movie') {
             pageUrl = buildUrl(
                 `/embed/movie/${encodeURIComponent(id)}`,
@@ -235,11 +180,6 @@ module.exports = async function handler(req, res) {
                 CINESRC_URL
             );
 
-        /*
-         * ANIME
-         * -------------------------
-         * These come from VidNest.
-         */
         } else if (type === 'anime') {
             if (!e || !t) {
                 return res.status(400).json({
@@ -266,11 +206,13 @@ module.exports = async function handler(req, res) {
             });
         }
 
+        console.log('[SCRAPER PAGE]', pageUrl);
+
         const media = await scrapeStream(pageUrl);
 
         if (!media) {
             return res.status(502).json({
-                error: 'Could not locate HLS stream'
+                error: 'Could not locate .m3u8 request'
             });
         }
 
@@ -296,7 +238,7 @@ module.exports = async function handler(req, res) {
         });
 
     } catch (error) {
-        console.error(error);
+        console.error('[SCRAPER ERROR]', error);
 
         return res.status(500).json({
             error: error.message || 'Internal server error'
